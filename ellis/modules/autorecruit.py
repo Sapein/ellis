@@ -21,6 +21,7 @@ class Autorecruit(ellis_modules.Ellis_Module, module_name="Autorecruit"):
         setup. Somes changes might be needed to detach it a bit further, but
         otherwise it is independent. """
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_closed = False
         recruited = []
         nation = None
         try:
@@ -33,6 +34,8 @@ class Autorecruit(ellis_modules.Ellis_Module, module_name="Autorecruit"):
                 self.log.info("Getting Nation...")
                 s.send("GET".encode('utf-8'))
                 nation = s.recv(2048).decode('utf-8')
+                if nation.lower() == 'end':
+                    server_closed = True
                 try:
                     nation = json.loads(nation)
                 except BaseException as e:
@@ -54,13 +57,12 @@ class Autorecruit(ellis_modules.Ellis_Module, module_name="Autorecruit"):
             self.log.info("Returning Nations...")
             for nation in recruited:
                 s.send('RETURN {}'.format(json.dumps(nation)).encode('utf-8'))
+            if not server_closed:
+                s.send("END".encode('utf-8'))
             s.shutdown(socket.SHUT_RDWR)
             s.close()
             self.log.info("Goodbye...")
             self.running = False
-
-    def on_load(self, *args, **kwargs):
-        self.auto_tg()
 
     def start(self, *args, **kwargs):
         self.running = True

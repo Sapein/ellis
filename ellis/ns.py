@@ -1,11 +1,20 @@
 import time
 import threading
+import logging
 import urllib.request
 import xml.etree.ElementTree as ElementTree
+
+import config 
 
 from typing import Optional
 
 
+
+ver = "0.0.0"
+
+def set_ver(version):
+    global ver
+    ver = version
 
 def logcall(message_prefix="Calling: {}"):
     def _logcall(fn):
@@ -67,8 +76,11 @@ class NS:
     ns_world_url = "https://www.nationstates.net/cgi-bin/api.cgi?q="
     def __init__(self, limiter, logger):
         self.limiter = limiter
-        self.logg = logger
-        self.log = L() #Let's disable the logger...
+        self.log = logging.getLogger("NS")
+        if config.Config['Core']["NS_Nation"] or config.Config['Core']["NS_Nation"].lower() == "Unknown":
+            raise ValueError("You MUST provide a Nation!")
+        if config.Config['Core']["NS_Region"] or config.Config['Core']["NS_Region"].lower() == "Unknown":
+            raise ValueError("You MUST provide a Region!")
 
     @logcall()
     def _send_request(self, url): 
@@ -76,7 +88,9 @@ class NS:
         self.log.debug("Checking Limits...")
         self.limiter.check()
         url = url.replace(" ", "_")
-        request = urllib.request.Request(url, headers={'User-Agent': 'Ellis.py v 0.1.0 - Dusandria Founder (Chanku#4372)'})
+        user_agent = ("Ellis v{} - written by Dusandria Founder (Chanku#4372), request for {} on behalf of {}"
+                     ).format(ver, config.Config['Core']['NS_Nation'], config.Config['Core']['NS_Region'])
+        request = urllib.request.Request(url, headers={'User-Agent': user_agent})
         self.log.debug("Sending Request to URL: {}.".format(url))
         with urllib.request.urlopen(request) as request:
             self.log.debug("Request Decoding!")
@@ -161,7 +175,10 @@ class NS_Telegram():
     def _send_request(self, url): 
         """ Actually sends the request and returns the raw stuff. """
         self.limiter.check()
-        request = urllib.request.Request(url, headers={'User-Agent': 'Ellis.py v 0.1.0 - Recruitment Attachment - Dusandria Founder (Chanku#4372)'})
+        url = url.replace(' ', "_")
+        user_agent = ("Ellis v{} - written by Dusandria Founder (Chanku#4372), request for {} on behalf of {}"
+                     ).format(ver, config.Config['Core']['NS_Nation'], config.Config['Core']['NS_Region'])
+        request = urllib.request.Request(url, headers={'User-Agent': user_agent})
         with urllib.request.urlopen(request) as request:
             return request.read().decode('utf-8')
 

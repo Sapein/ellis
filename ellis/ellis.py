@@ -10,6 +10,8 @@ import config
 import ellis_modules
 import ns
 
+__version__ = "1.0.0"
+
 def logcall(message_prefix="Calling: {}"):
     def _logcall(fn):
         def f(*args, **kwargs):
@@ -20,7 +22,6 @@ def logcall(message_prefix="Calling: {}"):
             return result
         return f
     return _logcall
-
 
 class EllisServer:
     blacklists: dict = {}
@@ -142,12 +143,9 @@ class EllisServer:
 
     def handle_client(self, client, address):
         self.log.info("Handling Client: {}".format(str(address)))
+        client_closed = False
         try:
             while self.running:
-                # Commands:
-                # RETURN [NATION] - returns a nation to the pool -> No Response
-                # GET - Gets a Nation -> Response: JSON Layout of the Nation Data.
-                # CHECK [NATION] checks if recruitable -> Response: JSON {recruitable: 0/1}
                 self.log.debug("Waiting for Command...")
                 command = client.recv(2048).decode('utf-8')
                 self.log.debug("Command Reciveved From: {}. Command: {}".format(str(address), command))
@@ -160,6 +158,9 @@ class EllisServer:
                         client.send(json.dumps({'recruitable': 1}).encode('utf-8'))
                     else:
                         client.send(json.dumps({'recruitable': 0}).encode('utf-8'))
+                elif command.lower().split(' ')[0] == 'end':
+                    client_closed = True
+                    break
                 elif command.lower() == 'get':
                     self.log.info("Sending Nation!")
                     while True:
@@ -175,6 +176,8 @@ class EllisServer:
             self.log.error(e, exc_info=1)
             raise
         finally:
+            if not client_closed:
+                client.send("END".encode('utf-8'))
             self.log.info("Disconnecting!")
             client.shutdown(socket.SHUT_RDWR)
             client.close()
@@ -211,3 +214,5 @@ class EllisServer:
                 f.write(']')
         except:
             pass
+
+ns.set_ver(__version__)
