@@ -50,7 +50,7 @@ class EllisServer:
         self.available_nations = self._read_in('./saved_nations')
         self.recruited_nations = self._read_in('./recruited_nations')
         self.rented_nations = self._read_in('./rented_nations')
-        self.blacklists['names'] = self._read_in('./name_blacklist')
+        self.blacklists = self._read_in('./blacklists')
         config.read_in()
         self.running = True
         ellis_modules._Ellis_Registry.start()
@@ -61,8 +61,52 @@ class EllisServer:
         while self.running:
             self.log.debug("Sending Request to NS")
             new_nations = self._get_recruitable()
+            new_nations = filter_nations(new_nations)
             self.available_nations.extend(new_nations)
         self.available_nations = list(set(self.available_nations))
+
+    @logcall()
+    def filter_nations(self, nations: list[dict]) -> list[dict]:
+        """
+        Filters nations from NationStates that shouldn't be in the queue .
+
+        Parameters
+        ----------
+        nations : list
+            A list of nations to be filtered through.
+
+        Returns
+        -------
+        A list of nations that is without the filterd names.
+        """
+        return [x for x in nations if not self.filter_nation(x)]
+
+    @logcall()
+    def filter_nation(self, nation: dict) -> bool:
+        """
+        Returns whether or not a nation should be filtered.
+
+        Paramters
+        ---------
+        nation : dict
+            A nation to be checked against the filters.
+
+        Returns
+        -------
+        True if the nation should be filtered, or False if not.
+        """
+        for field in self.blacklists:
+            try:
+                for partial in self.blacklists[field]['partial']:
+                    if partial.casefold() in nation[field].casefold():
+                        return True
+                for exact in self.blacklists[field]['exact']:
+                    if exact.casefold() == nation[field].casefold():
+                        return True
+            except KeyError:
+                self.log.debug("{} is not an attribute we can access!".format(field))
+                continue
+        return False
 
     @logcall()
     def run(self):
@@ -129,6 +173,11 @@ class EllisServer:
         with ns.lock:
             try:
                 nation = self.available_nations.pop()
+                nation_info = self.ns.get_nation(nation['name'])
+                nation.update(nation_info)
+                if self.filter_nation(nation):
+                    self.recruited_nations.append(nation)
+                    return None
             except IndexError:
                 return None
             self.rented_nations.append(nation)

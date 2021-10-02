@@ -1,0 +1,42 @@
+{
+    "name": {
+        "partial":["nazi", "hitler", "h1tler", "fascist", "reich", "womble"],
+        "exact":[]
+    },
+    "region": {
+        "partial": [],
+        "exact": [
+            "Altmora",
+            "Axis of Storms",
+            "Barbaria",
+            "Carolingia",
+            "Committees for Promotion of Integralism",
+            "Confederation of Corrupt Dictators",
+            "Despotic Europe",
+            "Farkasfalka",
+            "Fifth Empire",
+            "Heiliger Bund",
+            "Imperial Catholic Alliance",
+            "imperial earth",
+            "j o j",
+            "Lux Immortalem",
+            "lycanis",
+            "nationstates white genocide memorial",
+            "new reich of bunicken",
+            "Nuevo Amanecer",
+            "Raxulan Empire",
+            "the black fleet",
+            "The Coalition of Fascist Nations",
+            "The Decreeist Commonwealth",
+            "The Holy Reich Of Bunicken",
+            "The Holy Reich of Greater Germania",
+            "The Imperium of Man",
+            "The New Iron Order",
+            "the reunited resistance against liberals",
+            "the seventh reich",
+            "union of nationalists",
+            "United Fascist Workers Association",
+            "zarathustra"
+        ]
+    }
+}
