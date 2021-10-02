@@ -1,52 +1,51 @@
+"""
+This provides the NationStates interface for Ellis.
+"""
+
 import time
 import threading
 import logging
 import urllib.request
 import xml.etree.ElementTree as ElementTree
 
-import config 
+import config
 
 from typing import Optional
 
 
 
 ver = "0.0.0"
+lock = threading.Lock()
 
-def set_ver(version):
+def _set_ver(version):
     global ver
     ver = version
 
-def logcall(message_prefix="Calling: {}"):
-    def _logcall(fn):
-        def f(*args, **kwargs):
-            msg = message_prefix.format(fn.__qualname__)
-            args[0].log.debug(msg)
-            result = fn(*args, **kwargs)
-            args[0].log.debug("{}: DONE!".format(fn.__qualname__))
-            return result
-        return f
-    return _logcall
 
-
-class L():
-    def info(*args, **kwargs):
-        pass
-
-    def debug(*args, **kwargs):
-        pass
-
-lock = threading.Lock()
 class Limiter:
+    """
+    This class is a limiter for accessing NationStates, and should
+    be locked around.
+    """
+
     requests = 0
     tg_requests = 0
     last_request = None
     last_tg_request = None
+
     def __init__(self):
         self.last_request = 0
         self.last_tg_request = 0
 
     def check(self):
-        if (self.requests + self.tg_requests) < 50 or (self.requests + self.tg_requests >- 50 and self.last_request + 62 < time.time()):
+        """
+        Checks to see when the last normal API request was.
+
+        Notes
+        -----
+        This will block on call if a request can not be made.
+        """
+        if (self.requests + self.tg_requests) < 50 or self.last_request + 62 < time.time():
             if (self.requests + self.tg_requests) < 50:
                 self.requests += 1
             else:
@@ -58,6 +57,20 @@ class Limiter:
             self.check()
 
     def check_tg(self):
+        """
+        Checks to see when the last TG API request was.
+
+        See Also
+        --------
+        check : Checks when the last regular API Request.
+
+        Notes
+        -----
+        This uses the stricter recruitment restrictions, due to this
+        largely being meant for autotelegramming.
+        This will eventually be removed in future.
+        """
+
         normal_request = self.requests + self.tg_requests and (self.last_request + 60) < time.time()
         tg_request = self.tg_requests and (self.last_tg_request + 180) < time.time()
         if normal_request and tg_request:
@@ -72,8 +85,10 @@ class Limiter:
             self.check()
 
 class NS:
+
     ns_nation_url = "https://www.nationstates.net/cgi-bin/api.cgi?nation="
     ns_world_url = "https://www.nationstates.net/cgi-bin/api.cgi?q="
+
     def __init__(self, limiter, logger):
         self.limiter = limiter
         self.log = logging.getLogger("NS")
@@ -82,26 +97,20 @@ class NS:
         if config.Config['Core']["NS_Region"] or config.Config['Core']["NS_Region"].lower() == "Unknown":
             raise ValueError("You MUST provide a Region!")
 
-    @logcall()
-    def _send_request(self, url): 
+    def _send_request(self, url):
         """ Actually sends the request and returns the raw stuff. """
-        self.log.debug("Checking Limits...")
         self.limiter.check()
         url = url.replace(" ", "_")
         user_agent = ("Ellis v{} - written by Dusandria Founder (Chanku#4372), request for {} on behalf of {}"
                      ).format(ver, config.Config['Core']['NS_Nation'], config.Config['Core']['NS_Region'])
         request = urllib.request.Request(url, headers={'User-Agent': user_agent})
-        self.log.debug("Sending Request to URL: {}.".format(url))
         with urllib.request.urlopen(request) as request:
-            self.log.debug("Request Decoding!")
             return request.read().decode('utf-8')
 
-    @logcall()
     def get_nation_XML(self, nation):
         """ Sends a Request to get the raw XML of a nation """
         return self._send_request('{}{nation}'.format(self.ns_nation_url, nation=nation))
 
-    @logcall()
     def get_nation(self, nation):
         """ Returns a Dictionary-Like Object of a nation. """
         nation = nation.replace(" ", "_")
@@ -122,7 +131,6 @@ class NS:
                 new_dict.update(self._parse_element(child))
             return {tree.tag.lower(): new_dict}
 
-    @logcall()
     def get_nation_recruitable(self, nation:str, region: Optional[str]=None) -> bool:
         """ Sends a Request and returns True if it is able to be sent a recruitment TG,
         and False if it is not. A region is optional, and will add that into the query"""
@@ -141,22 +149,17 @@ class NS:
         else:
             raise SyntaxError("UNKNOWN RESPONSE: {}".format(response))
 
-    @logcall()
     def get_foundings(self):
         """ Requests a list of recent foundings from NationStates, and
         then returns a Dictionary of Recent Foundings. """
-        self.log.debug("Sending NS Request")
         foundings_xml = self._send_request('{}happenings;filter=founding'.format(self.ns_world_url))
-        self.log.debug("XML: {}".format(foundings_xml))
-        self.log.debug("Got the Root!")
         hapenings_root = ElementTree.fromstring(foundings_xml)[0]
         foundings = []
         for founding in hapenings_root:
             timestamp = founding[0].text
-            nation = founding[1].text.split("@@")[1] 
+            nation = founding[1].text.split("@@")[1]
             region = founding[1].text.split("%%")[1]
             foundings.append({'name':nation, 'founding_region':region, 'founded_at':timestamp})
-            self.log.debug("Response: {}".format(foundings[-1]))
         return foundings
 
 class NS_Telegram():
@@ -171,8 +174,8 @@ class NS_Telegram():
         self.limiter.check_tg()
         recipient = recipient.replace(" ", "_")
         self._send_request('{}{}'.format(self.ns_tg_url, recipient))
-        
-    def _send_request(self, url): 
+
+    def _send_request(self, url):
         """ Actually sends the request and returns the raw stuff. """
         self.limiter.check()
         url = url.replace(' ', "_")

@@ -1,3 +1,7 @@
+"""
+This is just a simple module for configuring stuff.
+"""
+
 import json
 
 config_path = "./ellis.conf"
@@ -12,15 +16,40 @@ Config = {
 }
 
 
-def add_module_config(module, configs):
-    global Config
-    Config[module] = configs
+def add_module_config(module_name : str, configs : dict[str, str]):
+    """
+    Adds in a config for a module,
 
-def remove_module_config(module):
+    Parameters
+    ----------
+    module_name : str
+
+    configs : dict
+        The 'default' configuration provided by the module.
+    """
+    global Config
+    Config[module_name] = configs
+
+def remove_module_config(module_name: str):
+    """
+    Removes the configuration from the global config.
+
+    Parameters
+    ----------
+    module_name : str
+
+    Raises
+    ------
+    KeyError
+        When the module has not been added/already removed from the config.
+    """
     global Config
     del Config[module]
 
 def read_in():
+    """
+    Reads in the Configruation File.
+    """
     global Config
     try:
         with open(config_path, 'r') as f:
@@ -29,8 +58,8 @@ def read_in():
         pass
 
 def write_out():
-    print("Printing")
+    """
+    Writes out the Configuration File
+    """
     with open(config_path, 'w') as f:
-        print("WRITING")
         f.write(json.dumps(Config, sort_keys=True, indent=4))
-        print("WROTE")

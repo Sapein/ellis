@@ -1,3 +1,8 @@
+"""
+This module contains the core functionality
+of the Ellis Server and Protocol.
+"""
+
 import json
 import socket
 import threading
@@ -215,4 +220,4 @@ class EllisServer:
         except:
             pass
 
-ns.set_ver(__version__)
+ns._set_ver(__version__)

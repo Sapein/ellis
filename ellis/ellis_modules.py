@@ -1,14 +1,27 @@
 """
-This is the Ellis Module API, and is mostly so that we can move things outside of
-the main Ellis module...
+This module manages the API and the general
+design for all Ellis Modules.
 """
 
 import threading
 import logging
 from typing import Optional
 
+log = logging.getLogger(__name__)
+
 class Ellis_Module:
+    """
+    The base module all Ellis Modules should inherit from.
+
+    ...
+
+    Attributes
+    ----------
+    running : bool
+        Whether or not the module is running
+    """
     running = False
+
     def __init_subclass__(cls, /, module_name: Optional[str]=None, *args, **kwargs):
         super().__init_subclass__(*args, **kwargs)
         if module_name is None:
@@ -17,14 +30,56 @@ class Ellis_Module:
         cls.module_name = module_name
         _Ellis_Registry.register_module(cls, module_name)
 
-    def access_Ellis(self, *args, **kwargs):
-        """ Do not override. """
+    def access_Ellis(self):
+        """
+        Returns the instance of Ellis, if provided to the Module.
+
+        This returns the instance of Ellis currently being ran, if the
+        Registry has decided to make it available to the module.
+
+        Returns
+        -------
+        EllisServer
+            Returns the currently running Ellis Instance.
+
+        Raises
+        ------
+        NotImplementedError
+            If the Registry has not provided access to the Module.
+
+        Notes
+        -----
+        This module is provided only to provide access to Ellis
+        directly if the module needs it, but otherwise this method
+        should *NOT* be called, nor should the intstance be stored.
+
+        The client should *NOT* override this method.
+        """
         raise NotImplementedError
 
     def start(self, *args, **kwargs):
+        """
+        Starts the Module up and begins running.
+
+        Notes
+        -----
+        This method should never be directly called, It is
+        automatically called by Ellis once the module system
+        is started. This should set running to True.
+        """
         raise NotImplementedError
 
     def stop(self, *args, **kwargs):
+        """
+        Stops the module and should shut down the module.
+
+        Notes
+        -----
+        This method shouldn't really be called, but may be
+        called in any case to ensure that the Module is shutdown
+        cleanly. The module should assume the server is going down,
+        but it is not necessary.
+        """
         raise NotImplementedError
 
 class _Ellis_Registry:
@@ -33,16 +88,16 @@ class _Ellis_Registry:
     __instance = None
 
     @classmethod
-    def request_Ellis(cls):
-        return cls.__instance
-
-    @classmethod
     def _add_Ellis(cls, ellis_instance):
         @classmethod
         def l(cls, ellis):
             pass
         cls.__instance = ellis_instance
         cls._add_Ellis = l
+
+    @classmethod
+    def request_Ellis(cls):
+        return cls.__instance
 
     @classmethod
     def start(cls):
@@ -64,7 +119,7 @@ class _Ellis_Registry:
         a = module()
         cls.active_modules[module.module_name] = a
         a.access_Ellis = access
-        return threading.Thread(target=a.start)
+        return threading.Thread(target=a.start, name=module.module_name)
 
     @classmethod
     def stop_module(cls, module):

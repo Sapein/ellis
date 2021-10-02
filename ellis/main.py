@@ -1,3 +1,8 @@
+"""
+This module is mostly a shell to start up Ellis
+and organize what is necessary. This may be modified.
+"""
+
 import ellis
 import logging
 
