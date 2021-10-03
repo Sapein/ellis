@@ -61,7 +61,7 @@ class EllisServer:
         while self.running:
             self.log.debug("Sending Request to NS")
             new_nations = self._get_recruitable()
-            new_nations = filter_nations(new_nations)
+            new_nations = self.filter_nations(new_nations)
             self.available_nations.extend(new_nations)
         self.available_nations = list(set(self.available_nations))
 
