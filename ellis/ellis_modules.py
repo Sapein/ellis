@@ -83,8 +83,8 @@ class Ellis_Module:
         raise NotImplementedError
 
 class _Ellis_Registry:
-    active_modules = {}
-    known_modules = {}
+    active_modules: dict[str, Ellis_Module] = {}
+    known_modules: dict[str, type[Ellis_Module]] = {}
     __instance = None
 
     @classmethod
@@ -127,7 +127,7 @@ class _Ellis_Registry:
         del cls.active_modules[module.module_name]
 
     @classmethod
-    def register_module(cls, module: Ellis_Module, module_name: str):
+    def register_module(cls, module: type[Ellis_Module], module_name: str):
         cls.known_modules[module_name] = module
 
 import load_modules

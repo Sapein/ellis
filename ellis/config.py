@@ -44,7 +44,7 @@ def remove_module_config(module_name: str):
         When the module has not been added/already removed from the config.
     """
     global Config
-    del Config[module]
+    del Config[module_name]
 
 def read_in():
     """

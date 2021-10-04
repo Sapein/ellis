@@ -85,13 +85,30 @@ class Limiter:
             self.check()
 
 class NS:
+    """
+    An object repesenting state and all necessary information needed
+    for calling the NationStates API.
 
+    Parameters
+    ----------
+    limiter : Limiter
+        The NationStates API Limiter.
+    logger : logging.Logger
+        A logging object, By default it is the "NS" Logger. 
+
+    Attributes
+    ----------
+    ns_nation_url : str
+        A string representation of the first part of the NationStates URL for nation shards.
+    ns_world_url : str
+        A string representatino of the first part of the NationStates URL for the world.
+    """
     ns_nation_url = "https://www.nationstates.net/cgi-bin/api.cgi?nation="
     ns_world_url = "https://www.nationstates.net/cgi-bin/api.cgi?q="
 
-    def __init__(self, limiter, logger):
+    def __init__(self, limiter, logger=logging.getLogger("NS")):
         self.limiter = limiter
-        self.log = logging.getLogger("NS")
+        self.log = logger
         if config.Config['Core']["NS_Nation"] or config.Config['Core']["NS_Nation"].lower() == "Unknown":
             raise ValueError("You MUST provide a Nation!")
         if config.Config['Core']["NS_Region"] or config.Config['Core']["NS_Region"].lower() == "Unknown":
@@ -163,12 +180,40 @@ class NS:
         return foundings
 
 class NS_Telegram():
+    """
+    An object repesenting state and all necessary information needed
+    for calling the NationStates API.
+
+    Parameters
+    ----------
+    limiter : Limiter
+        The NationStates API Limiter.
+    tgid : str
+        The Telegram ID for the Telegram you wish to send.
+    tg_key : str
+        The Telegram Key for the Telegram you wish to send.
+    api_key : str
+        The Unique API Key to send a telegram.
+
+    Attributes
+    ----------
+    ns_tg_url : str
+        A String representation of the base URL to send Telegram
+        Requests to.
+
+    See Also
+    --------
+    NS : The NationStates Request Object
+    """
+
     ns_tg_url = 'https://www.nationstates.net/cgi-bin/api.cgi?a=sendTG&client={client}&tgid={tgid}&key={key}&to='
+
     def __init__(self, limiter, tgid, tg_key, api_key):
         self.ns_tg_url = self.ns_tg_url.format(client=api_key,
                                                tgid=tgid,
                                                key=tg_key)
         self.limiter = limiter
+
     def send_telegram(self, recipient):
         """ Send a Recruitment Telegram to Recipient. """
         self.limiter.check_tg()

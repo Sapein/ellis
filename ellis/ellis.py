@@ -15,9 +15,21 @@ import config
 import ellis_modules
 import ns
 
+from typing import Optional
+
 __version__ = "1.0.0"
 
 def logcall(message_prefix="Calling: {}"):
+    """
+    A decorator allowing us to log when a function
+    is called, and when it returns.
+
+    Parameters
+    ----------
+    message_prefix : str
+        The 'message prefix' to append to the log when
+        the function is called.
+    """
     def _logcall(fn):
         def f(*args, **kwargs):
             msg = message_prefix.format(fn.__qualname__)
@@ -29,15 +41,40 @@ def logcall(message_prefix="Calling: {}"):
     return _logcall
 
 class EllisServer:
+    """
+    This is the base Ellis Server class, and is what you generally want to use.
+
+    Parameters
+    ----------
+    hostname : str
+        The hostname of the Ellis Server to use.
+    port : int
+        The port number of the Ellis Server to use.
+
+    Attributes
+    ----------
+    blacklists : dict
+        The filter criteria for nations to be removed from the list.
+    available_nations : dict
+        The list of available nations to be given out to clients.
+    rented_nations : dict
+        The list of nations that are currently 'handed out' to other
+        clients.
+    recruited_nations : dict
+        The list of nations that we know have been 'recruited', or are
+        otherwise unavailable.
+    log : logging.Logger
+        The ellis Logger.
+    """
+
     blacklists: dict = {}
     available_nations: list[dict] = []
     rented_nations: list[dict] = []
     recruited_nations: list[dict] = []
     log = logging.getLogger("Ellis")
 
-    recruitment_thread = None
     def __init__(self, hostname:str ='localhost', port:int=4526):
-        self.queue: list= []
+        self.queue: list = []
         self.Threads: list[threading.Thread] = []
         self.hostname = hostname
         self.port = port
@@ -47,6 +84,9 @@ class EllisServer:
 
     @logcall()
     def start(self):
+        """
+        This 'starts' the Ellis Server, and prepares for it to run.
+        """
         self.available_nations = self._read_in('./saved_nations')
         self.recruited_nations = self._read_in('./recruited_nations')
         self.rented_nations = self._read_in('./rented_nations')
@@ -110,6 +150,9 @@ class EllisServer:
 
     @logcall()
     def run(self):
+        """ 
+        This actually causes the server to run.
+        """
         try:
             self.log.info("Establishing Server...")
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -169,7 +212,7 @@ class EllisServer:
         return foundings
 
     @logcall()
-    def _checkout_nation(self) -> dict:
+    def _checkout_nation(self) -> Optional[dict]:
         with ns.lock:
             try:
                 nation = self.available_nations.pop()
@@ -196,6 +239,16 @@ class EllisServer:
                 self.available_nations.append(nation)
 
     def handle_client(self, client, address):
+        """ 
+        This handles a client after connecting
+
+        Parameters
+        ----------
+        client : socket.Socket
+            The socket we are talking too
+        address : tuple
+            The address of the client.
+        """
         self.log.info("Handling Client: {}".format(str(address)))
         client_closed = False
         try:
@@ -237,6 +290,7 @@ class EllisServer:
             client.close()
 
     def stop(self):
+        """ Stops the server. """
         self.running = False
         ellis_modules._Ellis_Registry.stop()
         self._write_out(self.available_nations, './saved_nations')
