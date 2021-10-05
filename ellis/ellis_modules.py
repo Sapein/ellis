@@ -3,13 +3,17 @@ This module manages the API and the general
 design for all Ellis Modules.
 """
 
+# pylint: disable=cyclic-import
+# The import being cylcical isn't bad here.
+
 import threading
 import logging
 from typing import Optional
 
 log = logging.getLogger(__name__)
 
-class Ellis_Module:
+
+class EllisModule:
     """
     The base module all Ellis Modules should inherit from.
 
@@ -22,7 +26,9 @@ class Ellis_Module:
     """
     running = False
 
-    def __init_subclass__(cls, /, module_name: Optional[str]=None, *args, **kwargs):
+    def __init_subclass__(cls, module_name: Optional[str] = None,
+                          *args, **kwargs):
+        # pylint: disable=keyword-arg-before-vararg
         super().__init_subclass__(*args, **kwargs)
         if module_name is None:
             module_name = cls.__name__
@@ -30,7 +36,7 @@ class Ellis_Module:
         cls.module_name = module_name
         _Ellis_Registry.register_module(cls, module_name)
 
-    def access_Ellis(self):
+    def access_Ellis(self):  # pylint: disable=invalid-name,
         """
         Returns the instance of Ellis, if provided to the Module.
 
@@ -82,39 +88,41 @@ class Ellis_Module:
         """
         raise NotImplementedError
 
-class _Ellis_Registry:
-    active_modules: dict[str, Ellis_Module] = {}
-    known_modules: dict[str, type[Ellis_Module]] = {}
+
+class _Ellis_Registry:  # pylint: disable=invalid-name
+    # pylint: disable=missing-function-docstring
+    active_modules: dict[str, EllisModule] = {}
+    known_modules: dict[str, type[EllisModule]] = {}
     __instance = None
 
     @classmethod
     def _add_Ellis(cls, ellis_instance):
         @classmethod
-        def l(cls, ellis):
+        def dork(cls, ellis):  # pylint: disable=unused-argument
             pass
         cls.__instance = ellis_instance
-        cls._add_Ellis = l
+        cls._add_Ellis = dork
 
     @classmethod
     def request_Ellis(cls):
         return cls.__instance
 
     @classmethod
-    def start(cls):
+    def start(cls) -> list[threading.Thread]:
         threads = []
-        for module in cls.known_modules:
-            threads.append(cls.start_module(cls.known_modules[module]))
+        for (_, module) in cls.known_modules.items():
+            threads.append(cls.start_module(module))
             threads[-1].start()
         return threads
 
     @classmethod
     def stop(cls):
-        for module in cls.known_modules:
-            cls.stop_module(cls.known_modules[module])
+        for (_, module) in cls.known_modules:
+            cls.stop_module(module)
 
     @classmethod
-    def start_module(cls, module) -> threading.Thread:
-        def access(self, *args, **kwargs):
+    def start_module(cls, module: EllisModule) -> threading.Thread:
+        def access(self, *args, **kwargs):  # pylint: disable=unused-argument
             return cls.request_Ellis()
         a = module()
         cls.active_modules[module.module_name] = a
@@ -127,7 +135,8 @@ class _Ellis_Registry:
         del cls.active_modules[module.module_name]
 
     @classmethod
-    def register_module(cls, module: type[Ellis_Module], module_name: str):
+    def register_module(cls, module: type[EllisModule], module_name: str):
         cls.known_modules[module_name] = module
 
-import load_modules
+
+import load_modules  # pylint: disable=wrong-import-position, unused-import

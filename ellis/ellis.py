@@ -11,15 +11,18 @@ import urllib.error
 
 import logging
 
+from typing import Optional
+
 import config
 import ellis_modules
 import ns
 
-from typing import Optional
 
 __version__ = "1.0.0"
 
+
 def logcall(message_prefix="Calling: {}"):
+    # pylint: disable=invalid-name
     """
     A decorator allowing us to log when a function
     is called, and when it returns.
@@ -39,6 +42,7 @@ def logcall(message_prefix="Calling: {}"):
             return result
         return f
     return _logcall
+
 
 class EllisServer:
     """
@@ -67,19 +71,21 @@ class EllisServer:
         The ellis Logger.
     """
 
+    # pylint: disable=too-many-instance-attributes
+    # The amount of attributes is what is required.
+
     blacklists: dict = {}
     available_nations: list[dict] = []
     rented_nations: list[dict] = []
     recruited_nations: list[dict] = []
     log = logging.getLogger("Ellis")
+    Threads: list[threading.Thread] = []
 
-    def __init__(self, hostname:str ='localhost', port:int=4526):
-        self.queue: list = []
-        self.Threads: list[threading.Thread] = []
+    def __init__(self, hostname: str = 'localhost', port: int = 4526):
         self.hostname = hostname
         self.port = port
-        self.running: bool = False
-        self.ns = ns.NS(ns.limit, self.log)
+        self.running = False
+        self.ns = ns.NS(ns.limit, self.log)  # pylint: disable=invalid-name
         ellis_modules._Ellis_Registry._add_Ellis(self)
 
     @logcall()
@@ -87,6 +93,10 @@ class EllisServer:
         """
         This 'starts' the Ellis Server, and prepares for it to run.
         """
+        # pylint: disable=protected-access
+        # The access is perfectly acceptable as it is an internal
+        # API for Ellis to use within itself.
+
         self.available_nations = self._read_in('./saved_nations')
         self.recruited_nations = self._read_in('./recruited_nations')
         self.rented_nations = self._read_in('./rented_nations')
@@ -144,21 +154,21 @@ class EllisServer:
                     if exact.casefold() == nation[field].casefold():
                         return True
             except KeyError:
-                self.log.debug("{} is not an attribute we can access!".format(field))
+                self.log.debug("%s is not an attribute we can access!", field)
                 continue
         return False
 
     @logcall()
     def run(self):
-        """ 
+        """
         This actually causes the server to run.
         """
         try:
             self.log.info("Establishing Server...")
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.bind((self.hostname, self.port))
+            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server.bind((self.hostname, self.port))
             self.log.debug("Listening...")
-            s.listen(5)
+            server.listen(5)
             self.log.info("Starting Pulling...")
             self.Threads.append(threading.Thread(target=self.pull_nations))
             self.Threads[-1].start()
@@ -167,9 +177,10 @@ class EllisServer:
             self.log.debug("Entering Main Loop...")
             while self.running:
                 self.log.info("Waiting for Client...")
-                client, address = s.accept()
+                client, address = server.accept()
                 self.log.debug("Client accepted!")
-                self.Threads.append(threading.Thread(target=self.handle_client, args=[client, address]))
+                self.Threads.append(threading.Thread(target=self.handle_client,
+                                                     args=[client, address]))
                 self.log.debug("Client Running!")
                 self.Threads[-1].start()
                 time.sleep(10)
@@ -178,11 +189,13 @@ class EllisServer:
         finally:
             self.stop()
             try:
-                s.shutdown(SHUT_RDWR)
-                s.close()
+                server.shutdown(socket.SHUT_RDWR)
+                server.close()
                 for thread in self.Threads:
                     thread.join()
-            except:
+            except:  # pylint: disable=bare-except
+                # We do not care if an error occurs here.
+                # It's merely cleanup code.
                 pass
 
     def _check_nation(self, nation_name: str) -> bool:
@@ -202,9 +215,9 @@ class EllisServer:
                     nation_info = self.ns.get_nation(founding['name'])
                     founding.update(nation_info)
                 foundings.append(founding)
-            except urllib.error.HTTPError as e:
-                self.log.error(e)
-                if e.code == 404:
+            except urllib.error.HTTPError as ex:
+                self.log.error(ex, exc_info=1)
+                if ex.code == 404:
                     pass
                 else:
                     raise
@@ -228,7 +241,7 @@ class EllisServer:
         return nation
 
     def _return_nation(self, nation: dict):
-        self.log.info("Returning Nation: {}".format(nation))
+        self.log.info("Returning Nation: %s", nation)
         if not self._check_nation(nation['name']):
             with ns.lock:
                 self.rented_nations.remove(nation)
@@ -239,7 +252,7 @@ class EllisServer:
                 self.available_nations.append(nation)
 
     def handle_client(self, client, address):
-        """ 
+        """
         This handles a client after connecting
 
         Parameters
@@ -249,23 +262,31 @@ class EllisServer:
         address : tuple
             The address of the client.
         """
-        self.log.info("Handling Client: {}".format(str(address)))
+        # pylint: disable=no-else-break,too-many-nested-blocks
+        # pylint: disable=too-many-branches
+
+        self.log.info("Handling Client: %s", str(address))
         client_closed = False
         try:
             while self.running:
                 self.log.debug("Waiting for Command...")
                 command = client.recv(2048).decode('utf-8')
-                self.log.debug("Command Reciveved From: {}. Command: {}".format(str(address), command))
-                if command.lower().split(' ')[0] == 'return' and command.lower().split('return ')[1]:
+                self.log.debug("Command Reciveved From: %s. Command: %s",
+                               str(address), command)
+                _command = command.lower().split(' ')[0]
+                is_return = bool(command.lower.split('return ')[1])
+                if _command == 'return' and is_return:
                     self.log.info("Returning Nation!")
                     self._return_nation(json.loads(command[len('return '):]))
-                elif command.lower().split(' ')[0] == 'check':
+                elif _command == 'check':
                     self.log.info("Checking Nation!")
                     if self._check_nation(command.lower().split('check ')[1]):
-                        client.send(json.dumps({'recruitable': 1}).encode('utf-8'))
+                        client.send(json.dumps({'recruitable': 1}
+                                               ).encode('utf-8'))
                     else:
-                        client.send(json.dumps({'recruitable': 0}).encode('utf-8'))
-                elif command.lower().split(' ')[0] == 'end':
+                        client.send(json.dumps({'recruitable': 0}
+                                               ).encode('utf-8'))
+                elif command.lower() == 'end':
                     client_closed = True
                     break
                 elif command.lower() == 'get':
@@ -276,11 +297,11 @@ class EllisServer:
                             client.send(json.dumps(nation).encode('utf-8'))
                             break
                         else:
-                            self.log.debug("Waiting until a nation is available...")
-                            self.log.debug("Nation: {}".format(nation))
+                            self.log.debug("Waiting for an available nation")
+                            self.log.debug("Nation: %s", nation)
                             time.sleep(30)
-        except BaseException as e:
-            self.log.error(e, exc_info=1)
+        except BaseException as ex:
+            self.log.error(ex, exc_info=1)
             raise
         finally:
             if not client_closed:
@@ -291,6 +312,8 @@ class EllisServer:
 
     def stop(self):
         """ Stops the server. """
+        # pylint: disable=protected-access
+        # The registry is a part of ellis, so access is fine.
         self.running = False
         ellis_modules._Ellis_Registry.stop()
         self._write_out(self.available_nations, './saved_nations')
@@ -300,27 +323,30 @@ class EllisServer:
 
     @logcall()
     def _read_in(self, location: str) -> list[dict]:
-        self.log.info("Reading in: {}".format(location))
+        self.log.info("Reading in: %s", location)
         nations = []
         try:
-            with open(location, 'r') as f:
-                nations = json.loads(f.read())
-        except:
+            with open(location, 'r', encoding='utf-8') as file:
+                nations = json.loads(file.read())
+        except:  # pylint: disable=bare-except
+            # If an error happens, it's fine.
             pass
 
         return nations
 
     @logcall()
     def _write_out(self, state_list: list[dict], location: str):
-        self.log.info("Writing Out to: {}".format(location))
+        self.log.info("Writing Out to: %s", location)
         try:
-            with open(location, 'w') as f:
-                f.write('[')
-                for s in state_list:
-                    f.write(json.dumps(s))
-                    f.write(',\n')
-                f.write(']')
-        except:
+            with open(location, 'w', encoding='utf-8') as file:
+                file.write('[')
+                for state in state_list:
+                    file.write(json.dumps(state))
+                    file.write(',\n')
+                file.write(']')
+        except:  # pylint: disable=bare-except
+            # If an error happens, it's fine.
             pass
 
-ns._set_ver(__version__)
+
+ns._set_ver(__version__)  # pylint: disable=protected-access

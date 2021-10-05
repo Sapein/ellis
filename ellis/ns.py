@@ -6,20 +6,20 @@ import time
 import threading
 import logging
 import urllib.request
-import xml.etree.ElementTree as ElementTree
-
-import config
-
+from xml.etree import ElementTree
 from typing import Optional
 
 
+import config
 
-ver = "0.0.0"
+
+VER = "0.0.0"
 lock = threading.Lock()
 
+
 def _set_ver(version):
-    global ver
-    ver = version
+    global VER  # pylint: disable=W0603
+    VER = version
 
 
 class Limiter:
@@ -45,7 +45,9 @@ class Limiter:
         -----
         This will block on call if a request can not be made.
         """
-        if (self.requests + self.tg_requests) < 50 or self.last_request + 62 < time.time():
+        is_allowed = (self.requests + self.tg_requests) < 50
+        is_allowed = is_allowed or self.last_request + 62 < time.time()
+        if is_allowed:
             if (self.requests + self.tg_requests) < 50:
                 self.requests += 1
             else:
@@ -71,9 +73,11 @@ class Limiter:
         This will eventually be removed in future.
         """
 
-        normal_request = self.requests + self.tg_requests and (self.last_request + 60) < time.time()
-        tg_request = self.tg_requests and (self.last_tg_request + 180) < time.time()
-        if normal_request and tg_request:
+        nontg_request = self.requests + self.tg_requests
+        nontg_request = nontg_request and self.last_request + 60 < time.time()
+        tg_request = self.tg_requests <= 1
+        tg_request = tg_request and (self.last_tg_request + 180) < time.time()
+        if nontg_request and tg_request:
             if (self.requests + self.tg_requests) < 50:
                 self.requests += 1
             else:
@@ -83,6 +87,7 @@ class Limiter:
             time.sleep(182)
             self.requests = 0
             self.check()
+
 
 class NS:
     """
@@ -94,14 +99,16 @@ class NS:
     limiter : Limiter
         The NationStates API Limiter.
     logger : logging.Logger
-        A logging object, By default it is the "NS" Logger. 
+        A logging object, By default it is the "NS" Logger.
 
     Attributes
     ----------
     ns_nation_url : str
-        A string representation of the first part of the NationStates URL for nation shards.
+        A string representation of the first
+        part of the NationStates URL for nation shards.
     ns_world_url : str
-        A string representatino of the first part of the NationStates URL for the world.
+        A string representatino of the first part of the
+        NationStates URL for the world.
     """
     ns_nation_url = "https://www.nationstates.net/cgi-bin/api.cgi?nation="
     ns_world_url = "https://www.nationstates.net/cgi-bin/api.cgi?q="
@@ -109,38 +116,52 @@ class NS:
     def __init__(self, limiter, logger=logging.getLogger("NS")):
         self.limiter = limiter
         self.log = logger
-        if config.Config['Core']["NS_Nation"] or config.Config['Core']["NS_Nation"].lower() == "Unknown":
+
+        nation = config.Config['Core']['NS_Nation']
+        region = config.Config['Core']['NS_Region']
+
+        nation_conf = nation.lower() == "unknown"
+        nation_conf = nation or bool(nation)
+        region_conf = region.lower() == "unknown"
+        region_conf = region or bool(region)
+
+        if nation_conf:
             raise ValueError("You MUST provide a Nation!")
-        if config.Config['Core']["NS_Region"] or config.Config['Core']["NS_Region"].lower() == "Unknown":
+        if region_conf:
             raise ValueError("You MUST provide a Region!")
 
     def _send_request(self, url):
         """ Actually sends the request and returns the raw stuff. """
         self.limiter.check()
         url = url.replace(" ", "_")
-        user_agent = ("Ellis v{} - written by Dusandria Founder (Chanku#4372), request for {} on behalf of {}"
-                     ).format(ver, config.Config['Core']['NS_Nation'], config.Config['Core']['NS_Region'])
-        request = urllib.request.Request(url, headers={'User-Agent': user_agent})
+        user_agent = ("Ellis v{} - written by Dusandria Founder (Chanku#4372),"
+                      "request for {} on behalf of {}"
+                      ).format(VER,
+                               config.Config['Core']['NS_Nation'],
+                               config.Config['Core']['NS_Region'])
+        request = urllib.request.Request(url,
+                                         headers={'User-Agent': user_agent})
         with urllib.request.urlopen(request) as request:
             return request.read().decode('utf-8')
 
-    def get_nation_XML(self, nation):
+    def get_nation_xml(self, nation_name: str) -> str:
         """ Sends a Request to get the raw XML of a nation """
-        return self._send_request('{}{nation}'.format(self.ns_nation_url, nation=nation))
+        return self._send_request('{}{nation}'.format(self.ns_nation_url,
+                                                      nation=nation_name))
 
-    def get_nation(self, nation):
+    def get_nation(self, nation_name: str) -> dict[str, str]:
         """ Returns a Dictionary-Like Object of a nation. """
-        nation = nation.replace(" ", "_")
-        nation_xml = self.get_nation_XML(nation)
+        nation_name = nation_name.replace(" ", "_")
+        nation_xml = self.get_nation_xml(nation_name)
         nation_root = ElementTree.fromstring(nation_xml)
-        a = self._parse_element(nation_root)
+        parsed_nation = self._parse_element(nation_root)
         try:
-            return a['nation']
+            return parsed_nation['nation']
         except KeyError:
-            return a
+            return parsed_nation
 
     def _parse_element(self, tree):
-        if len(tree) == 0:
+        if len(tree) == 0:  # pylint: disable=no-else-return
             return {tree.tag.lower(): tree.text}
         else:
             new_dict = {}
@@ -148,20 +169,24 @@ class NS:
                 new_dict.update(self._parse_element(child))
             return {tree.tag.lower(): new_dict}
 
-    def get_nation_recruitable(self, nation:str, region: Optional[str]=None) -> bool:
-        """ Sends a Request and returns True if it is able to be sent a recruitment TG,
-        and False if it is not. A region is optional, and will add that into the query"""
+    def get_nation_recruitable(self, nation: str,
+                               region: Optional[str] = None) -> bool:
+        """ Sends a Request and returns True if it is able to be sent
+        a recruitment TG, and False if it is not. A region is optional,
+        and will add that into the query"""
         nation = nation.replace(" ", "_")
         query = '&q=tgcanrecruit'
-        if not region is None:
+        if region is not None:
             query = "{};region={region}".format(nation, region=region)
-        response = self._send_request('{}{nation}{query}'.format(self.ns_nation_url,
-                                                                 nation=nation,
-                                                                 query=query))
+        response = self._send_request(('{}{nation}{query}'
+                                       ).format(self.ns_nation_url,
+                                                nation=nation,
+                                                query=query))
         response = self._parse_element(ElementTree.fromstring(response))
-        if response['nation']['tgcanrecruit'] == "1":
+        can_recruit = response['nation']['tgcanrecruit']
+        if can_recruit == "1":  # pylint: disable=no-else-return
             return True
-        elif response['nation']['tgcanrecruit'] == "0":
+        elif can_recruit == "0":
             return False
         else:
             raise SyntaxError("UNKNOWN RESPONSE: {}".format(response))
@@ -169,17 +194,21 @@ class NS:
     def get_foundings(self):
         """ Requests a list of recent foundings from NationStates, and
         then returns a Dictionary of Recent Foundings. """
-        foundings_xml = self._send_request('{}happenings;filter=founding'.format(self.ns_world_url))
+        foundings_xml = self._send_request(('{}happenings;filter=founding'
+                                            ).format(self.ns_world_url))
         hapenings_root = ElementTree.fromstring(foundings_xml)[0]
         foundings = []
         for founding in hapenings_root:
             timestamp = founding[0].text
             nation = founding[1].text.split("@@")[1]
             region = founding[1].text.split("%%")[1]
-            foundings.append({'name':nation, 'founding_region':region, 'founded_at':timestamp})
+            foundings.append({'name': nation,
+                              'founding_region': region,
+                              'founded_at': timestamp})
         return foundings
 
-class NS_Telegram():
+
+class NS_Telegram():  # pylint: disable=C0103,R0903
     """
     An object repesenting state and all necessary information needed
     for calling the NationStates API.
@@ -206,7 +235,9 @@ class NS_Telegram():
     NS : The NationStates Request Object
     """
 
-    ns_tg_url = 'https://www.nationstates.net/cgi-bin/api.cgi?a=sendTG&client={client}&tgid={tgid}&key={key}&to='
+    ns_tg_url = ('https://www.nationstates.net/cgi-bin/'
+                 'api.cgi?a=sendTG&client={client}&tgid={tgid}&key={key}&to='
+                 )
 
     def __init__(self, limiter, tgid, tg_key, api_key):
         self.ns_tg_url = self.ns_tg_url.format(client=api_key,
@@ -224,10 +255,15 @@ class NS_Telegram():
         """ Actually sends the request and returns the raw stuff. """
         self.limiter.check()
         url = url.replace(' ', "_")
-        user_agent = ("Ellis v{} - written by Dusandria Founder (Chanku#4372), request for {} on behalf of {}"
-                     ).format(ver, config.Config['Core']['NS_Nation'], config.Config['Core']['NS_Region'])
-        request = urllib.request.Request(url, headers={'User-Agent': user_agent})
+        user_agent = ("Ellis v{} - written by Dusandria Founder (Chanku#4372),"
+                      "request for {} on behalf of {}"
+                      ).format(VER,
+                               config.Config['Core']['NS_Nation'],
+                               config.Config['Core']['NS_Region'])
+        request = urllib.request.Request(url,
+                                         headers={'User-Agent': user_agent})
         with urllib.request.urlopen(request) as request:
             return request.read().decode('utf-8')
+
 
 limit = Limiter()

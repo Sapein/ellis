@@ -4,7 +4,10 @@ This is just a simple module for configuring stuff.
 
 import json
 
-config_path = "./ellis.conf"
+# pylint: disable=W0603,W0602
+
+
+CONFIG_PATH = "./ellis.conf"
 
 Config = {
     'Core': {
@@ -13,10 +16,10 @@ Config = {
         'NS_Region': "Unknown",
         'NS_Nation': "Unknown",
     },
-}
+}  # pylint: disable=C0103
 
 
-def add_module_config(module_name : str, configs : dict[str, str]):
+def add_module_config(module_name: str, configs: dict[str, str]):
     """
     Adds in a config for a module,
 
@@ -27,8 +30,8 @@ def add_module_config(module_name : str, configs : dict[str, str]):
     configs : dict
         The 'default' configuration provided by the module.
     """
-    global Config
     Config[module_name] = configs
+
 
 def remove_module_config(module_name: str):
     """
@@ -46,20 +49,22 @@ def remove_module_config(module_name: str):
     global Config
     del Config[module_name]
 
+
 def read_in():
     """
     Reads in the Configruation File.
     """
     global Config
     try:
-        with open(config_path, 'r') as f:
-            Config = json.loads(f.read())
-    except:
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as file:
+            Config = json.loads(file.read())
+    except (OSError, IOError):
         pass
+
 
 def write_out():
     """
     Writes out the Configuration File
     """
-    with open(config_path, 'w') as f:
-        f.write(json.dumps(Config, sort_keys=True, indent=4))
+    with open(CONFIG_PATH, 'w', encoding='utf-8') as file:
+        file.write(json.dumps(Config, sort_keys=True, indent=4))
