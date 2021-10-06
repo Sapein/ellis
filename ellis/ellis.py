@@ -251,13 +251,13 @@ class EllisServer:
                 self.rented_nations.remove(nation)
                 self.available_nations.append(nation)
 
-    def handle_client(self, client, address):
+    def handle_client(self, client: socket.socket, address: tuple[str, int]):
         """
         This handles a client after connecting
 
         Parameters
         ----------
-        client : socket.Socket
+        client : socket.socket
             The socket we are talking too
         address : tuple
             The address of the client.

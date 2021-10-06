@@ -96,7 +96,7 @@ class _Ellis_Registry:  # pylint: disable=invalid-name
     __instance = None
 
     @classmethod
-    def _add_Ellis(cls, ellis_instance):
+    def _add_Ellis(cls, ellis_instance: type["EllisServer"]):
         @classmethod
         def dork(cls, ellis):  # pylint: disable=unused-argument
             pass
