@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=42.0","wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+addopts = "--cov=ellis"
+testpaths = [
+    "tests",
+]
+
+[tool.mypy]
+mypy_path = "src"
+warn_unreachable = true
+warn_unused_configs = true
+no_implicit_reexport = true
+
+[tool.pylint.message_control]
+max-line-length=79
+disable=raw-checker-failed,
+    bad-inline-option,
+    locally-disabled,
+    file-ignored,
+    suppressed-message,
+    useless-suppression,
+    deprecated-pragma,
+    use-symbolic-message-instead,
+    consider-using-f-string
