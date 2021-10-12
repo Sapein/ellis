@@ -118,8 +118,9 @@ class _Ellis_Registry:  # pylint: disable=invalid-name
 
     @classmethod
     def stop(cls):
-        for (_, module) in cls.known_modules:
-            cls.stop_module(module)
+        for (_, module) in cls.active_modules.items():
+            cls.stop_module(module, preserve=True)
+        cls.active_modules = []
 
     @classmethod
     def start_module(cls, module: type[EllisModule]) -> threading.Thread:
@@ -131,9 +132,10 @@ class _Ellis_Registry:  # pylint: disable=invalid-name
         return threading.Thread(target=a.start, name=module.module_name)
 
     @classmethod
-    def stop_module(cls, module):
+    def stop_module(cls, module, preserve=False):
         cls.active_modules[module.module_name].stop()
-        del cls.active_modules[module.module_name]
+        if not preserve:
+            del cls.active_modules[module.module_name]
 
     @classmethod
     def register_module(cls, module: type[EllisModule], module_name: str):
