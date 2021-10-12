@@ -13,9 +13,7 @@ import logging
 
 from typing import Optional
 
-import config
-import ellis_modules
-import ns
+from ellis import config, ellis_modules, ns
 
 
 __version__ = "1.0.0"

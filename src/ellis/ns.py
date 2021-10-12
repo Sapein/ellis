@@ -10,7 +10,7 @@ from xml.etree import ElementTree
 from typing import Optional
 
 
-import config
+from ellis import config
 
 
 VER = "0.0.0"

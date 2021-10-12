@@ -139,4 +139,4 @@ class _Ellis_Registry:  # pylint: disable=invalid-name
         cls.known_modules[module_name] = module
 
 
-import load_modules  # pylint: disable=wrong-import-position, unused-import
+from ellis import load_modules  # pylint: disable=wrong-import-position, unused-import

@@ -6,9 +6,7 @@ import socket
 import time
 import json
 
-import config
-import ellis_modules
-import ns
+from ellis import config, ellis_modules, ns
 
 
 class Autorecruit(ellis_modules.EllisModule, module_name="Autorecruit"):
