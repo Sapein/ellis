@@ -9,8 +9,15 @@ recruiitment purposes
 - A simple to use Auto-Telegram System that implements with it.
 
 ### Requirements  
-- Python 3.8 or later *
+- Python 3.9 or later
 - An internet connection
+
+### Development Requirements
+- Python 3.9 or later
+- An Internet Connection
+- Pytest
+- Pylint
+- Flake8
 
 ### License and Copyright  
   All code is licensed under the MIT (Expat) License, see LICENSE for more Information.
