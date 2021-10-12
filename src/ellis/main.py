@@ -5,7 +5,7 @@ and organize what is necessary. This may be modified.
 
 import logging
 
-import ellis
+from ellis import ellis
 
 LOG_FORMAT = '%(asctime)s - %(threadName)s :: %(message)s'
 

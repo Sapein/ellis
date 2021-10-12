@@ -191,7 +191,7 @@ class EllisServer:
                 server.close()
                 for thread in self.Threads:
                     thread.join()
-            except:  # pylint: disable=bare-except
+            except:  # pylint: disable=bare-except # noqa: E722
                 # We do not care if an error occurs here.
                 # It's merely cleanup code.
                 pass
@@ -214,7 +214,7 @@ class EllisServer:
                     founding.update(nation_info)
                 foundings.append(founding)
             except urllib.error.HTTPError as ex:
-                self.log.error(ex, exc_info=1)
+                self.log.error(ex, exc_info=True)
                 if ex.code == 404:
                     pass
                 else:
@@ -272,7 +272,7 @@ class EllisServer:
                 self.log.debug("Command Reciveved From: %s. Command: %s",
                                str(address), command)
                 _command = command.lower().split(' ')[0]
-                is_return = bool(command.lower.split('return ')[1])
+                is_return = bool(command.lower().split('return ')[1])
                 if _command == 'return' and is_return:
                     self.log.info("Returning Nation!")
                     self._return_nation(json.loads(command[len('return '):]))
@@ -299,7 +299,7 @@ class EllisServer:
                             self.log.debug("Nation: %s", nation)
                             time.sleep(30)
         except BaseException as ex:
-            self.log.error(ex, exc_info=1)
+            self.log.error(ex, exc_info=True)
             raise
         finally:
             if not client_closed:
@@ -326,7 +326,7 @@ class EllisServer:
         try:
             with open(location, 'r', encoding='utf-8') as file:
                 nations = json.loads(file.read())
-        except:  # pylint: disable=bare-except
+        except:  # pylint: disable=bare-except # noqa: E722
             # If an error happens, it's fine.
             pass
 
@@ -342,7 +342,7 @@ class EllisServer:
                     file.write(json.dumps(state))
                     file.write(',\n')
                 file.write(']')
-        except:  # pylint: disable=bare-except
+        except:  # pylint: disable=bare-except # noqa: E722
             # If an error happens, it's fine.
             pass
 

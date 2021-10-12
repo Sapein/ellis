@@ -25,15 +25,16 @@ class EllisModule:
         Whether or not the module is running
     """
     running = False
+    module_name: str = ""
 
     def __init_subclass__(cls, module_name: Optional[str] = None,
                           *args, **kwargs):
         # pylint: disable=keyword-arg-before-vararg
-        super().__init_subclass__(*args, **kwargs)
+        super().__init_subclass__(*args, **kwargs)  # type: ignore
         if module_name is None:
             module_name = cls.__name__
 
-        cls.module_name = module_name
+        cls.module_name = module_name  # type: ignore
         _Ellis_Registry.register_module(cls, module_name)
 
     def access_Ellis(self):  # pylint: disable=invalid-name,
@@ -96,12 +97,12 @@ class _Ellis_Registry:  # pylint: disable=invalid-name
     __instance = None
 
     @classmethod
-    def _add_Ellis(cls, ellis_instance: type["EllisServer"]):
+    def _add_Ellis(cls, ellis_instance):
         @classmethod
         def dork(cls, ellis):  # pylint: disable=unused-argument
             pass
         cls.__instance = ellis_instance
-        cls._add_Ellis = dork
+        cls._add_Ellis = dork  # type: ignore
 
     @classmethod
     def request_Ellis(cls):
@@ -121,12 +122,12 @@ class _Ellis_Registry:  # pylint: disable=invalid-name
             cls.stop_module(module)
 
     @classmethod
-    def start_module(cls, module: EllisModule) -> threading.Thread:
+    def start_module(cls, module: type[EllisModule]) -> threading.Thread:
         def access(self, *args, **kwargs):  # pylint: disable=unused-argument
             return cls.request_Ellis()
         a = module()
         cls.active_modules[module.module_name] = a
-        a.access_Ellis = access
+        a.access_Ellis = access  # type: ignore
         return threading.Thread(target=a.start, name=module.module_name)
 
     @classmethod
@@ -139,4 +140,4 @@ class _Ellis_Registry:  # pylint: disable=invalid-name
         cls.known_modules[module_name] = module
 
 
-from ellis import load_modules  # pylint: disable=wrong-import-position, unused-import
+from ellis import load_modules  # pylint: disable=wrong-import-position, unused-import # noqa: F401, E501, E402
