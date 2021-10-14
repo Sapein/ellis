@@ -46,7 +46,7 @@ class TestLimiter:
 
     def test_toosoon(self):
         limit = ns.Limiter()
-        limit.last_request = time() - 50
+        limit.last_request = time() + 60
         limit.check()
         assert limit.requests == 1
 
@@ -57,7 +57,7 @@ class TestLimiter:
         limit = ns.Limiter()
         monkeypatch.setattr("time.sleep",
                             lambda x: rewrite(x, limit))
-        limit.last_request = time() - 30
+        limit.last_request = time() + 60
         limit.requests = 50
         limit.check()
         assert limit.requests == 1
@@ -69,7 +69,7 @@ class TestLimiter:
         limit = ns.Limiter()
         monkeypatch.setattr("time.sleep",
                             lambda x: rewrite(x, limit))
-        limit.last_request = time() - 30
+        limit.last_request = time() + 60
         limit.requests = 49
         limit.tg_requests = 1
         limit.check()
@@ -155,6 +155,7 @@ class MockRequest:
         return self.rval
 
 REQUEST_XML = "<NATION>test</NATION>"
+REQUEST_XML_ALT = "<REGION>test</REGION>"
 
 SIMPLE_XML = "<NATION>test</NATION>"
 SIMPLE_PARSED = {'nation':'test'}
@@ -174,22 +175,42 @@ class TestNS:
     """ Tests the ns.py NS Class Logic. """
 
     @pytest.fixture()
-    def mock_request(self, monkeypatch,):
+    def mock_request(self, monkeypatch):
         i = REQUEST_XML.encode('utf-8')
         def patch(*args, **kwargs):
             return MockRequest(i)
         monkeypatch.setattr('urllib.request.urlopen',
                             patch)
 
+    @pytest.fixture()
+    def mock_request_alt(self, monkeypatch):
+        i = REQUEST_XML_ALT.encode('utf-8')
+        def patch(*args, **kwargs):
+            return MockRequest(i)
+        monkeypatch.setattr('urllib.request.urlopen',
+                            patch)
+
     @pytest.fixture(autouse=True)
-    def conf(self, monkeypatch):
+    def conf(self, monkeypatch, request):
         conf = {'NS_Nation':'Test',
                 'NS_Region':'Test', }
         monkeypatch.setattr('ellis.config.Config',
                             {'Core':conf})
 
+    @pytest.fixture(params=[{'NS_Nation':'Test', 'NS_Region':''},
+                            {'NS_Nation':'', 'NS_Region':'Test'}])
+    def conf_bad(self, monkeypatch, request):
+        monkeypatch.undo()
+        monkeypatch.setattr('ellis.config.Config',
+                            {'Core':request.param})
+
+
     def test_creation(self):
         nationstates = ns.NS(ns.limit)
+
+    def test_creation_bad(self, conf_bad):
+        with pytest.raises(ValueError):
+            nationstates = ns.NS(ns.limit)
 
     def test_send_request(self, mock_request):
         nationstates = ns.NS(ns.Limiter())
@@ -235,7 +256,7 @@ class TestNS:
         monkeypatch.setattr('ellis.ns.NS._parse_element',
                             lambda x, y: y)
         nationstates = ns.NS(ns.Limiter())
-        recruitable = nationstates.get_nation_recruitable("test")
+        recruitable = nationstates.get_nation_recruitable("test", region="test")
         assert recruitable is expected
 
     def test_get_nation_recruitable_bad(self, mock_request, monkeypatch):
@@ -252,6 +273,11 @@ class TestNS:
 
     def test_get_nation(self, mock_request):
         assert ns.NS(ns.Limiter()).get_nation("test") == "test"
+
+    def test_get_nation(self, mock_request_alt):
+        assert ns.NS(ns.Limiter()).get_nation("test") == {'region':"test"}
+
+
 
 
 class TestNsTg:
@@ -271,8 +297,20 @@ class TestNsTg:
         monkeypatch.setattr('ellis.config.Config',
                             {'Core':conf})
 
+
+    @pytest.fixture(params=[{'NS_Nation':'Test', 'NS_Region':''},
+                            {'NS_Nation':'', 'NS_Region':'Test'}])
+    def conf_bad(self, monkeypatch, request):
+        monkeypatch.undo()
+        monkeypatch.setattr('ellis.config.Config',
+                            {'Core':request.param})
+
     def test_creation(self):
         nationstates = ns.NS_Telegram(ns.limit, '', '', '')
+    
+    def test_creation_bad(self, conf_bad):
+        with pytest.raises(ValueError):
+            nationstates = ns.NS(ns.limit)
 
     def test_send_request(self, mock_request):
         nationstates = ns.NS_Telegram(ns.Limiter(), '', '', '')
