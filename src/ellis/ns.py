@@ -51,7 +51,7 @@ class Limiter:
             if (self.requests + self.tg_requests) < 50:
                 self.requests += 1
             else:
-                self.requests = 0
+                self.requests = 1
             self.last_request = time.time()
         else:
             time.sleep(62)
@@ -73,20 +73,18 @@ class Limiter:
         This will eventually be removed in future.
         """
 
-        nontg_request = self.requests + self.tg_requests
-        nontg_request = nontg_request and self.last_request + 60 < time.time()
-        tg_request = self.tg_requests <= 1
-        tg_request = tg_request and (self.last_tg_request + 180) < time.time()
+        nontg_request = (self.requests + self.tg_requests) < 50
+        nontg_request = nontg_request or self.last_request + 62 < time.time()
+        tg_request = self.tg_requests < 1
+        tg_request = tg_request or (self.last_tg_request + 180) < time.time()
         if nontg_request and tg_request:
-            if (self.requests + self.tg_requests) < 50:
-                self.requests += 1
-            else:
-                self.requests = 0
+            self.tg_requests += 1
+            self.last_tg_request = time.time()
             self.last_request = time.time()
         else:
             time.sleep(182)
-            self.requests = 0
-            self.check()
+            self.tg_requests = 0
+            self.check_tg()
 
 
 class NS:
@@ -121,9 +119,9 @@ class NS:
         region = config.Config['Core']['NS_Region']
 
         nation_conf = nation.lower() == "unknown"
-        nation_conf = nation or bool(nation)
+        nation_conf = nation_conf or not bool(nation)
         region_conf = region.lower() == "unknown"
-        region_conf = region or bool(region)
+        region_conf = region_conf or not bool(region)
 
         if nation_conf:
             raise ValueError("You MUST provide a Nation!")
@@ -245,15 +243,28 @@ class NS_Telegram():  # pylint: disable=C0103,R0903
                                                key=tg_key)
         self.limiter = limiter
 
+        nation = config.Config['Core']['NS_Nation']
+        region = config.Config['Core']['NS_Region']
+
+        nation_conf = nation.lower() == "unknown"
+        nation_conf = nation_conf or not bool(nation)
+        region_conf = region.lower() == "unknown"
+        region_conf = region_conf or not bool(region)
+
+        if nation_conf:
+            raise ValueError("You MUST provide a Nation!")
+        if region_conf:
+            raise ValueError("You MUST provide a Region!")
+
+
     def send_telegram(self, recipient):
         """ Send a Recruitment Telegram to Recipient. """
-        self.limiter.check_tg()
         recipient = recipient.replace(" ", "_")
         self._send_request('{}{}'.format(self.ns_tg_url, recipient))
 
     def _send_request(self, url):
         """ Actually sends the request and returns the raw stuff. """
-        self.limiter.check()
+        self.limiter.check_tg()
         url = url.replace(' ', "_")
         user_agent = ("Ellis v{} - written by Dusandria Founder (Chanku#4372),"
                       "request for {} on behalf of {}"
