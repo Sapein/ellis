@@ -14,32 +14,10 @@ import logging
 from typing import Optional
 
 from ellis import config, ellis_modules, ns
+from ellis.tracecall import tracecall as logcall
 
 
 __version__ = "1.0.0"
-
-
-def logcall(message_prefix="Calling: {}"):
-    # pylint: disable=invalid-name
-    """
-    A decorator allowing us to log when a function
-    is called, and when it returns.
-
-    Parameters
-    ----------
-    message_prefix : str
-        The 'message prefix' to append to the log when
-        the function is called.
-    """
-    def _logcall(fn):
-        def f(*args, **kwargs):
-            msg = message_prefix.format(fn.__qualname__)
-            args[0].log.debug(msg)
-            result = fn(*args, **kwargs)
-            args[0].log.debug("{}: DONE!".format(fn.__qualname__))
-            return result
-        return f
-    return _logcall
 
 
 class EllisServer:
