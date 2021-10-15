@@ -57,7 +57,7 @@ def read_in():
     global Config
     try:
         with open(CONFIG_PATH, 'r', encoding='utf-8') as file:
-            Config = json.loads(file.read())
+            Config = json.load(file)
     except (OSError, IOError):
         pass
 
@@ -67,4 +67,4 @@ def write_out():
     Writes out the Configuration File
     """
     with open(CONFIG_PATH, 'w', encoding='utf-8') as file:
-        file.write(json.dumps(Config, sort_keys=True, indent=4))
+        json.dump(Config, file, sort_keys=True, indent=4)
