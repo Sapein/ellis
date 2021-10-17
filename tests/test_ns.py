@@ -310,7 +310,7 @@ class TestNsTg:
     
     def test_creation_bad(self, conf_bad):
         with pytest.raises(ValueError):
-            nationstates = ns.NS(ns.limit)
+            nationstates = ns.NS_Telegram(ns.limit, '', '', '')
 
     def test_send_request(self, mock_request):
         nationstates = ns.NS_Telegram(ns.Limiter(), '', '', '')
