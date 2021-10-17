@@ -38,7 +38,15 @@ def test_remove_config(monkeypatch):
     assert "Test" not in config.Config
 
 @pytest.fixture()
-def json_fake_dump_read(monkeypatch):
+def hide_actual_config(monkeypatch, tmp_path):
+    d = tmp_path / "ellis.conf"
+    d.write_text("dork")
+    monkeypatch.setattr('ellis.config.CONFIG_PATH', d.as_posix())
+    yield
+    monkeypatch.undo()
+
+@pytest.fixture()
+def json_fake_dump_read(hide_actual_config, monkeypatch):
     def dump(obj, fp, *args, **kwargs):
         print(json.dumps(DEFAULT_CONFIG, sort_keys=True))
 
@@ -49,18 +57,19 @@ def json_fake_dump_read(monkeypatch):
     yield
     monkeypatch.undo()
 
-def test_write_out(monkeypatch, capsys, json_fake_dump_read):
+
+def test_write_out(capsys, json_fake_dump_read):
     config.write_out()
     captured = capsys.readouterr()
     assert captured.out.replace(' ','').strip() == ('{"Core":{"Hostname":"localhos",'
                                '"NS_Nation":"Unknown",'
                                '"NS_Region":"Unknown","Port":"4526"}}')
 
-def test_read_in_bad(monkeypatch, capsys, json_fake_read_bad):
+def test_read_in_bad(capsys, json_fake_read_bad):
     config.read_in()
     assert config.Config != DEFAULT_CONFIG
 
-def test_read_in(monkeypatch, capsys, json_fake_dump_read):
+def test_read_in(capsys, json_fake_dump_read):
     config.read_in()
     assert config.Config == DEFAULT_CONFIG
 
