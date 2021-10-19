@@ -17,6 +17,7 @@ if __name__ == "__main__":
     handler.setFormatter(logging.Formatter(LOG_FORMAT))
     file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
     config.read_in()
+    ellis._set_ver()
     server = ellis.EllisServer(hostname=config.Config['Core']['Hostname'],
                                port=int(config.Config['Core']['Port']))
     server.log.setLevel(logging.DEBUG)

@@ -19,6 +19,11 @@ from ellis.tracecall import tracecall as logcall
 
 __version__ = "1.0.0"
 
+RENTED_JSON_PATH = "./rented_nations"
+RECRUITED_JSON_PATH = "./recruited_nations"
+AVAILABLE_JSON_PATH = "./saved_nations"
+BLACKLIST_PATH = "./blacklist"
+
 
 class EllisServer:
     """
@@ -73,10 +78,10 @@ class EllisServer:
         # The access is perfectly acceptable as it is an internal
         # API for Ellis to use within itself.
 
-        self.available_nations = self._read_in('./saved_nations')
-        self.recruited_nations = self._read_in('./recruited_nations')
-        self.rented_nations = self._read_in('./rented_nations')
-        self.blacklists = self._read_in('./blacklists')
+        self.available_nations = self._read_in(AVAILABLE_JSON_PATH)
+        self.recruited_nations = self._read_in(RECRUITED_JSON_PATH)
+        self.rented_nations = self._read_in(RENTED_JSON_PATH)
+        self.blacklists = self._read_in(BLACKLIST_PATH)
         config.read_in()
         self.running = True
         ellis_modules._Ellis_Registry.start()
@@ -292,9 +297,9 @@ class EllisServer:
         # The registry is a part of ellis, so access is fine.
         self.running = False
         ellis_modules._Ellis_Registry.stop()
-        self._write_out(self.available_nations, './saved_nations')
-        self._write_out(self.rented_nations, './rented_nations')
-        self._write_out(self.recruited_nations, './recruited_nations')
+        self._write_out(self.available_nations, AVAILABLE_JSON_PATH)
+        self._write_out(self.rented_nations, RENTED_JSON_PATH)
+        self._write_out(self.recruited_nations, RECRUITED_JSON_PATH)
         config.write_out()
 
     @logcall()
@@ -303,9 +308,9 @@ class EllisServer:
         nations = []
         try:
             with open(location, 'r', encoding='utf-8') as file:
-                nations = json.loads(file.read())
-        except:  # pylint: disable=bare-except # noqa: E722
-            # If an error happens, it's fine.
+                nations = json.load(file)
+        except FileNotFoundError:
+            # If it can't find the file, it's fine.
             pass
 
         return nations
@@ -313,16 +318,9 @@ class EllisServer:
     @logcall()
     def _write_out(self, state_list: list[dict], location: str):
         self.log.info("Writing Out to: %s", location)
-        try:
-            with open(location, 'w', encoding='utf-8') as file:
-                file.write('[')
-                for state in state_list:
-                    file.write(json.dumps(state))
-                    file.write(',\n')
-                file.write(']')
-        except:  # pylint: disable=bare-except # noqa: E722
-            # If an error happens, it's fine.
-            pass
+        with open(location, 'w', encoding='utf-8') as file:
+            json.dump(state_list, file)
 
 
-ns._set_ver(__version__)  # pylint: disable=protected-access
+def _set_ver():
+    ns._set_ver(__version__)  # pylint: disable=protected-access
