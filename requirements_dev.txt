@@ -1,7 +1,6 @@
 astroid==2.8.2
 attrs==21.2.0
 coverage==6.0.1
--e git+ssh://git@github.com/Sapein/ellis.git@00e3b714c2623a1158120df65ae63ff34925d1a1#egg=ellis
 flake8==4.0.1
 iniconfig==1.1.1
 isort==5.9.3
