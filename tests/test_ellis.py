@@ -1,6 +1,7 @@
 """ This exercises and tests Ellis.py """
 
 import pytest
+import socket
 import json
 
 TEST_FORMAT = [{'name':'Potato', 'region':'potato'}, {'name':'Potato2', 'region':'potato'}]
@@ -106,6 +107,41 @@ def test_filter_nations():
     new_ellis.blacklists = blacklist
     assert new_ellis.filter_nations(nations) == [{"name":"Taco Supreme"}]
 
+@pytest.fixture()
+def monkeypatch_sockets(monkeypatch):
+    def recv(self, b, c=['GET', 'END', 'GET']): 
+        return c.pop().encode('utf-8')
+    def send(self, b):
+        print(b.decode('utf-8'))
+    def shutdown(self, b):
+        return b
+    def close(self):
+        return self
+    monkeypatch.setattr('socket.socket.recv', recv)
+    monkeypatch.setattr('socket.socket.send', send)
+    monkeypatch.setattr('socket.socket.close', close)
+    monkeypatch.setattr('socket.socket.shutdown', shutdown)
+    yield
+    monkeypatch.undo()
+
+@pytest.fixture()
+def monkeypatch_ns(monkeypatch):
+    monkeypatch.setattr('ellis.ns.NS.get_nation', lambda y, x: {'name':x})
+    monkeypatch.setattr('ellis.ns.NS.get_nation_recruitable', lambda y, x: True)
+    yield
+    monkeypatch.undo()
+
+@pytest.mark.skip() # This test isn't working right for right now. So we skip it.
+def test_handle_client(capsys, monkeypatch_sockets, monkeypatch_ns):
+    s = socket.socket()
+    new_ellis = ellis.EllisServer()
+    new_ellis.available_nations = [{'name':'Potato'}, {'name':'Potato'}]
+    new_ellis.start()
+    new_ellis.handle_client(s, ('', 1))
+    new_ellis.stop()
+    captured = capsys.readouterr()
+    print(captured)
+    assert False
 
 def test_setver():
     ellis._set_ver()
