@@ -255,7 +255,10 @@ class EllisServer:
                 self.log.debug("Command Reciveved From: %s. Command: %s",
                                str(address), command)
                 _command = command.lower().split(' ')[0]
-                is_return = bool(command.lower().split('return ')[1])
+                try:
+                    is_return = bool(command.lower().split('return ')[1])
+                except IndexError:
+                    is_return = False
                 if _command == 'return' and is_return:
                     self.log.info("Returning Nation!")
                     self._return_nation(json.loads(command[len('return '):]))
